@@ -19,7 +19,15 @@ import { StatsBar } from "@/components/stats-bar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { TokenIds, TokenStream } from "@/components/token-stream"
 import { useTokenizer } from "@/hooks/use-tokenizer"
-import { DEFAULT_MODEL, MODELS, tokenizerRepo, tokenizerRepos, type ModelSpec } from "@/lib/models"
+import {
+  DEFAULT_MODEL,
+  MODELS,
+  modelName,
+  modelOwner,
+  tokenizerRepo,
+  tokenizerRepos,
+  type ModelSpec,
+} from "@/lib/models"
 import { loadCustomModels, saveCustomModels } from "@/lib/custom-models"
 import { repairAliases } from "@/lib/share"
 import { AddModel } from "@/components/add-model"
@@ -127,16 +135,17 @@ export default function App() {
             <SelectTrigger className="w-[280px]" aria-label="Tokenizer model">
               {/* Base UI renders the raw value by default; map it back to the label. */}
               <SelectValue>
-                {(value: string) => allModels.find((m) => m.id === value)?.label ?? value}
+                {(value: string) => modelName(value)}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {allModels.map((m) => (
                 <SelectItem key={m.id} value={m.id}>
                   <span className="flex flex-col items-start">
-                    <span>{m.label}</span>
+                    <span className="font-mono text-[13px]">{modelName(m.id)}</span>
                     <span className="text-xs text-muted-foreground">
-                      {m.maker} · {cache[tokenizerRepo(m.id, allModels)]?.cached ? "downloaded" : m.download}
+                      {modelOwner(m.id)} ·{" "}
+                      {cache[tokenizerRepo(m.id, allModels)]?.cached ? "downloaded" : m.download}
                     </span>
                   </span>
                 </SelectItem>

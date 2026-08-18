@@ -43,22 +43,18 @@ afterEach(() => {
 })
 
 const curated: ModelSpec[] = [
-  { id: "google/gemma-4-26B-A4B-it", label: "26B", maker: "g", download: "31 MB", note: "" },
+  { id: "google/gemma-4-26B-A4B-it", download: "31 MB", note: "" },
   {
     id: "google/gemma-4-31B-it",
-    label: "31B",
-    maker: "g",
     download: "31 MB",
     note: "",
     tokenizer: "google/gemma-4-26B-A4B-it",
   },
-  { id: "Qwen/Qwen3.8-27B", label: "Qwen", maker: "q", download: "12 MB", note: "" },
+  { id: "Qwen/Qwen3.8-27B", download: "12 MB", note: "" },
 ]
 
 const added = (id: string, extra: Partial<ModelSpec> = {}): ModelSpec => ({
   id,
-  label: id.split("/")[1],
-  maker: id.split("/")[0],
   download: "31 MB",
   note: "",
   custom: true,

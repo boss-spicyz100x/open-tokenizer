@@ -91,8 +91,6 @@ describe("aliases on added models", () => {
   const added: ModelSpec[] = [
     {
       id: "google/gemma-4-12B-it",
-      label: "gemma-4-12B-it",
-      maker: "google",
       download: "31 MB",
       note: "",
       custom: true,

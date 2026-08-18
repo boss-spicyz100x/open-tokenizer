@@ -1,14 +1,20 @@
 import { describe, expect, test } from "bun:test"
 import { describeFailure, inspectModel, searchModels, tokenizerDigest } from "./hub"
 import { specFromRepo } from "./custom-models"
+import { modelName, modelOwner } from "./models"
 
 describe("specFromRepo", () => {
-  test("splits owner and name for the picker", () => {
+  test("keeps the repo id and marks the entry as added", () => {
     const spec = specFromRepo("Qwen/Qwen3-8B", 11_422_654)
     expect(spec.id).toBe("Qwen/Qwen3-8B")
-    expect(spec.label).toBe("Qwen3-8B")
-    expect(spec.maker).toBe("Qwen")
     expect(spec.custom).toBe(true)
+  })
+
+  test("display name comes from the id, not a stored label", () => {
+    // Derived, so an added model reads the same as a curated one.
+    expect(modelName("Qwen/Qwen3-8B")).toBe("Qwen3-8B")
+    expect(modelOwner("Qwen/Qwen3-8B")).toBe("Qwen")
+    expect(modelName("google/gemma-4-26B-A4B-it")).toBe("gemma-4-26B-A4B-it")
   })
 
   test("formats the real size, finer-grained when small", () => {
@@ -21,7 +27,8 @@ describe("specFromRepo", () => {
   })
 
   test("survives an id with no owner", () => {
-    expect(specFromRepo("gpt2", 0).label).toBe("gpt2")
+    expect(modelName("gpt2")).toBe("gpt2")
+    expect(modelOwner("gpt2")).toBe("")
   })
 })
 

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import type { LoadState } from "@/hooks/use-tokenizer"
-import { modelsSharing, type ModelSpec } from "@/lib/models"
+import { modelName, modelsSharing, type ModelSpec } from "@/lib/models"
 import type { CacheEntry, CacheReport } from "@/workers/tokenizer.worker"
 
 export function formatBytes(bytes: number): string {
@@ -43,7 +43,7 @@ export function ModelStorage({
   // Sharing cuts both ways: one download serves these, and removing it drops
   // them all. Say so rather than letting either come as a surprise.
   const shared = modelsSharing(spec.id, models)
-  const sharedNames = shared.map((m) => m.label).join(", ")
+  const sharedNames = shared.map((m) => modelName(m.id)).join(", ")
 
   const summary = cachedModels.length > 0 && (
     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -70,7 +70,7 @@ export function ModelStorage({
           <div className="flex items-center gap-2 text-sm">
             <Loader2 className="size-4 animate-spin" />
             <span>
-              {entry?.cached ? "Loading" : "Downloading"} {spec.label}
+              {entry?.cached ? "Loading" : "Downloading"} {modelName(spec.id)}
               {entry?.cached ? " from cache" : ` — ${spec.download}`}…
             </span>
           </div>
@@ -85,7 +85,7 @@ export function ModelStorage({
       <Card className="border-destructive/50">
         <CardContent className="flex flex-wrap items-center gap-3 py-5 text-sm">
           <AlertCircle className="size-4 shrink-0 text-destructive" />
-          <span className="mr-auto">Could not load {spec.label}: {load.message}</span>
+          <span className="mr-auto">Could not load {modelName(spec.id)}: {load.message}</span>
           <Button size="sm" variant="outline" onClick={onDownload}>
             Try again
           </Button>
@@ -99,7 +99,7 @@ export function ModelStorage({
       <Card>
         <CardContent className="flex flex-wrap items-center gap-3 py-5">
           <div className="mr-auto">
-            <p className="text-sm font-medium">{spec.label} isn't downloaded yet</p>
+            <p className="text-sm font-medium">{modelName(spec.id)} isn't downloaded yet</p>
             <p className="text-xs text-muted-foreground">
               {spec.download} from the Hugging Face CDN, then cached in this browser.
               {shared.length > 0 && ` The same files serve ${sharedNames}.`}
@@ -129,7 +129,7 @@ export function ModelStorage({
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-1">
       <span className="text-xs text-muted-foreground">
-        {spec.label} · {entry?.cached ? `${formatBytes(entry.bytes)} cached` : "in memory"}
+        {modelName(spec.id)} · {entry?.cached ? `${formatBytes(entry.bytes)} cached` : "in memory"}
         {shared.length > 0 && ` · shared with ${sharedNames}`}
       </span>
       {entry?.cached && (
