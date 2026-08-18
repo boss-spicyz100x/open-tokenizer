@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 import { AutoTokenizer, env, type PreTrainedTokenizer } from "@huggingface/transformers"
+import { encodeText, tokenizerClass, vocabSize } from "@/lib/tokenizer-core"
 
 // Tokenizers are fetched from the HF CDN and cached by the browser's Cache API.
 // Downloads are never started implicitly — the UI asks for them explicitly.
@@ -110,33 +111,6 @@ function load(modelId: string): Promise<PreTrainedTokenizer> {
   return pending
 }
 
-/**
- * `constructor.name` is mangled by the production minifier ("To"), so prefer the
- * `tokenizer_class` recorded in tokenizer_config.json. Not every repo sets it
- * (GPT-2 does not), so fall back to the constructor name only when it still
- * looks like a real class, and otherwise report nothing.
- */
-function tokenizerClass(tok: PreTrainedTokenizer): string {
-  const config = (tok as unknown as { _tokenizerConfig?: { tokenizer_class?: string } })
-    ._tokenizerConfig
-  const declared = config?.tokenizer_class
-  if (declared) return declared
-  const ctor = tok.constructor.name
-  return ctor.endsWith("Tokenizer") ? ctor : ""
-}
-
-/**
- * `get_vocab()` returns an empty object in transformers.js v3 for these
- * tokenizers, so read the size off the parsed tokenizer.json instead.
- */
-function vocabSize(tok: PreTrainedTokenizer): number {
-  const json = (tok as unknown as { _tokenizerJSON?: { model?: { vocab?: unknown } } })._tokenizerJSON
-  const vocab = json?.model?.vocab
-  if (Array.isArray(vocab)) return vocab.length
-  if (vocab && typeof vocab === "object") return Object.keys(vocab).length
-  return Object.keys(tok.get_vocab() ?? {}).length
-}
-
 ctx.addEventListener("message", async (event: MessageEvent<WorkerRequest>) => {
   const msg = event.data
 
@@ -174,11 +148,7 @@ ctx.addEventListener("message", async (event: MessageEvent<WorkerRequest>) => {
 
       case "encode": {
         const tok = await load(msg.modelId)
-        const ids: number[] = tok.encode(msg.text, { add_special_tokens: false })
-        const raw: string[] = tok.tokenize(msg.text, { add_special_tokens: false })
-        // Per-token decode is the only display form that survives byte-level BPE:
-        // raw tokens come back as mojibake ("à¸¢") for anything non-Latin.
-        const decoded = ids.map((id) => tok.decode([id]))
+        const { ids, raw, decoded } = encodeText(tok, msg.text)
         post({ type: "result", modelId: msg.modelId, requestId: msg.requestId, ids, raw, decoded })
         return
       }

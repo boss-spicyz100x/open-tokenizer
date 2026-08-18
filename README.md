@@ -110,6 +110,30 @@ status refresh. The UI has to reset that model to "not downloaded" in the *same*
 commit that clears its cached flag — inferring it from the report instead races
 the load-if-cached effect, which re-downloads the files it just deleted.
 
+## Tests
+
+```bash
+bun run test        # everything
+bun run test:unit   # pure logic only — fast, no network
+```
+
+`src/lib/tokens.test.ts` covers the pure stat and classification logic.
+
+`src/lib/tokenizer-core.test.ts` loads the real tokenizers and pins known counts
+(35 tokens for the Thai sample on Gemma 4, 28 on Qwen3.8, 259 on GPT-2). It hits
+the network on a cold cache, ~44 MB across three models, cached afterwards. The
+point is to catch a transformers.js upgrade silently changing counts, which is
+the one regression nobody spots by eye.
+
+The logic under test lives in `src/lib/tokenizer-core.ts`, imported by both the
+worker and the tests, so the tests exercise the shipped code path rather than a
+re-implementation of it.
+
+One assertion is deliberately loose: GPT-2 declares no `tokenizer_class`, so its
+name falls back to `constructor.name` — the real class under bun, but `""` in a
+minified build. The test asserts the contract (never a mangled name) rather than
+a build-specific literal.
+
 ## The ONNX stub
 
 transformers.js statically imports `onnxruntime-web/webgpu`, which pulls a
