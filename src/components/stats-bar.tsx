@@ -15,8 +15,9 @@ function tiles(stats: Stats): Tile[] {
       hint: "higher is more efficient",
     },
     {
-      label: "Bytes / token",
-      value: stats.tokens ? stats.bytesPerToken.toFixed(2) : "—",
+      label: "Tokens / word",
+      value: stats.words ? stats.tokensPerWord.toFixed(2) : "—",
+      hint: "lower is more efficient",
     },
   ]
 }

@@ -86,6 +86,18 @@ Three details worth knowing before changing that file:
 `get_vocab()` returns an empty object in transformers.js v3, so vocab size is
 read off the parsed `tokenizer.json` instead.
 
+### Counting words
+
+Thai does not put spaces between words, so a whitespace split counts phrase
+groups: 2 for a sentence that actually contains 15 words. `Intl.Segmenter`
+applies ICU's dictionary-based breaking for Thai (and Lao, Khmer, Japanese,
+Chinese) and falls back to spaces elsewhere — the locale tag is irrelevant,
+since ICU selects the algorithm from the script.
+
+That makes **tokens / word** meaningful, and it is the honest efficiency measure
+for Thai: chars/token flatters any vocabulary that happens to split on character
+boundaries.
+
 ### Removing a download
 
 transformers.js stores files in `caches.open('transformers-cache')`, keyed by

@@ -37,17 +37,38 @@ export type Stats = {
   words: number
   charsPerToken: number
   bytesPerToken: number
+  tokensPerWord: number
   /** Tokens that decode to a partial UTF-8 sequence — the tokenizer split mid-character. */
   byteTokens: number
 }
 
 const encoder = new TextEncoder()
 
+/**
+ * Thai does not put spaces between words, so splitting on whitespace counts
+ * phrase groups and badly undercounts — 2 instead of 15 for a typical sentence.
+ * `Intl.Segmenter` applies ICU's dictionary-based breaking for Thai (and Lao,
+ * Khmer, Japanese, Chinese) and falls back to spaces elsewhere. The locale is
+ * irrelevant: ICU picks the algorithm from the script, not the tag.
+ */
+const segmenter =
+  typeof Intl !== "undefined" && "Segmenter" in Intl
+    ? new Intl.Segmenter(undefined, { granularity: "word" })
+    : null
+
+export function countWords(text: string): number {
+  if (!text.trim()) return 0
+  if (!segmenter) return text.trim().split(/\s+/).length
+  let n = 0
+  for (const s of segmenter.segment(text)) if (s.isWordLike) n++
+  return n
+}
+
 export function computeStats(text: string, pieces: TokenPiece[]): Stats {
   const tokens = pieces.length
   const chars = [...text].length
   const bytes = encoder.encode(text).length
-  const words = text.trim() ? text.trim().split(/\s+/).length : 0
+  const words = countWords(text)
   return {
     tokens,
     chars,
@@ -55,6 +76,7 @@ export function computeStats(text: string, pieces: TokenPiece[]): Stats {
     words,
     charsPerToken: tokens ? chars / tokens : 0,
     bytesPerToken: tokens ? bytes / tokens : 0,
+    tokensPerWord: words ? tokens / words : 0,
     byteTokens: pieces.filter((p) => p.kind === "bytes").length,
   }
 }
