@@ -2,6 +2,8 @@
   "name": "tokenizer",
   "private": true,
   "version": "0.0.0",
+  "license": "MIT",
+  "author": "Supachai Kheawjuy <boss.spicyz@100x.fi>",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +12,7 @@
     "test:unit": "bun test src/lib/tokens.test.ts",
     "lint": "oxlint",
     "preview": "vite preview",
-    "deploy": "bun run build && wrangler pages deploy dist --project-name=tokenizer --branch main --commit-dirty=true"
+    "deploy": "bun run test && bun run build && wrangler pages deploy dist --project-name=tokenizer --branch main --commit-dirty=true"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

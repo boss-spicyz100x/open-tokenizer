@@ -22,11 +22,23 @@ then `bun run preview` serves the production build on port 7789 the same way.
 
 ## Deploying
 
-```bash
-bun run deploy     # builds, then wrangler pages deploy dist
+**Pushing to `main` deploys.** The Pages project is connected to this repo and
+builds on push with:
+
+```
+bun run lint && bun run test && bun run build
 ```
 
-Cloudflare Pages, project `tokenizer`. Auth comes from the
+so a failing test blocks the deploy — that build command is the CI. It lives in
+the Cloudflare project settings rather than in this repo, which is the one piece
+of configuration not under version control. Cloudflare's own CI SDK
+(`@cloudflare/ci`) is Workers-only and does not cover Pages projects.
+
+`bun run deploy` is a manual escape hatch that uploads directly, bypassing git.
+It runs the same tests first. Prefer pushing: using both paths for the same
+commit produces two deployments.
+
+Cloudflare Pages, project `tokenizer`. Direct uploads authenticate with the
 `CLOUDFLARE_API_TOKEN` environment variable. The whole site is static — no Pages
 Functions, no server side — because tokenization happens in the visitor's
 browser.
@@ -146,6 +158,10 @@ The stub implements only what the backend touches at import time (`Tensor`,
 `InferenceSession`, `env.wasm` / `env.webgpu` / `env.versions`). If a
 transformers.js upgrade starts reaching for something else at module scope,
 that is the first place to look.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
 
 ## Stack
 
