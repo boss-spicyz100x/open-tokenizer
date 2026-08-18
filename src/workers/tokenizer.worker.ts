@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import { AutoTokenizer, env, type PreTrainedTokenizer } from "@huggingface/transformers"
-import { encodeText, tokenizerClass, vocabSize } from "@/lib/tokenizer-core"
+import { encodeText, stopToken, tokenizerClass, vocabSize } from "@/lib/tokenizer-core"
+import type { StopToken } from "@/lib/tokenizer-core"
 
 // Tokenizers are fetched from the HF CDN and cached by the browser's Cache API.
 // Downloads are never started implicitly — the UI asks for them explicitly.
@@ -29,7 +30,13 @@ export type WorkerResponse =
   | { type: "status"; report: CacheReport }
   | { type: "removed"; modelIds: string[]; report: CacheReport }
   | { type: "progress"; modelId: string; file?: string; progress?: number }
-  | { type: "ready"; modelId: string; vocabSize: number; tokenizerClass: string }
+  | {
+      type: "ready"
+      modelId: string
+      vocabSize: number
+      tokenizerClass: string
+      stop: StopToken | null
+    }
   | { type: "error"; modelId: string; requestId?: number; message: string }
   | {
       type: "result"
@@ -142,6 +149,7 @@ ctx.addEventListener("message", async (event: MessageEvent<WorkerRequest>) => {
           modelId: msg.modelId,
           vocabSize: vocabSize(tok),
           tokenizerClass: tokenizerClass(tok),
+          stop: stopToken(tok),
         })
         return
       }

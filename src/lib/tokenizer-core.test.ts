@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, test } from "bun:test"
 import { AutoTokenizer, type PreTrainedTokenizer } from "@huggingface/transformers"
-import { encodeText, tokenizerClass, vocabSize } from "./tokenizer-core"
+import { encodeText, stopToken, tokenizerClass, vocabSize } from "./tokenizer-core"
 
 /**
  * These hit the network on a cold cache (~44 MB total across the three models)
@@ -104,5 +104,28 @@ describe("Thai efficiency ordering", () => {
     const n = (id: string) => encodeText(tokenizers.get(id)!, THAI).ids.length
     expect(n("Qwen/Qwen3.8-27B")).toBeLessThan(n("google/gemma-4-26B-A4B-it"))
     expect(n("google/gemma-4-26B-A4B-it")).toBeLessThan(n("openai-community/gpt2") / 5)
+  })
+})
+
+describe("stopToken", () => {
+  test("reports the declared eos where the repo sets one", () => {
+    expect(stopToken(tokenizers.get("google/gemma-4-26B-A4B-it")!)).toEqual({
+      token: "<eos>",
+      id: 1,
+    })
+    expect(stopToken(tokenizers.get("Qwen/Qwen3.8-27B")!)?.token).toBe("<|im_end|>")
+  })
+
+  test("returns null rather than guessing when none is declared", () => {
+    expect(stopToken(tokenizers.get("openai-community/gpt2")!)).toBeNull()
+  })
+
+  test("every declared stop token costs exactly one token", () => {
+    // This is why counting is content + 1 no matter which stop token fires.
+    for (const id of ["google/gemma-4-26B-A4B-it", "Qwen/Qwen3.8-27B"]) {
+      const tok = tokenizers.get(id)!
+      const stop = stopToken(tok)!
+      expect(encodeText(tok, stop.token).ids).toEqual([stop.id])
+    }
   })
 })

@@ -12,6 +12,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import { ModelStorage } from "@/components/model-storage"
 import { StatsBar } from "@/components/stats-bar"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -20,6 +22,7 @@ import { useTokenizer } from "@/hooks/use-tokenizer"
 import { DEFAULT_MODEL, MODELS } from "@/lib/models"
 
 const MODEL_IDS = MODELS.map((m) => m.id)
+const STOP_KEY = "count-stop-token"
 
 const SAMPLES: { label: string; text: string }[] = [
   {
@@ -44,11 +47,21 @@ export default function App() {
   const [modelId, setModelId] = useState(DEFAULT_MODEL)
   const [text, setText] = useState(SAMPLES[1].text)
   const [copied, setCopied] = useState(false)
+  // Persisted: anyone cross-checking API counts wants this on every visit.
+  const [includeStop, setIncludeStop] = useState(
+    () => localStorage.getItem(STOP_KEY) === "1",
+  )
   const { load, result, encoding, cache, download, remove, removeAll } = useTokenizer(
     modelId,
     text,
     MODEL_IDS,
+    includeStop,
   )
+
+  const toggleStop = (on: boolean) => {
+    setIncludeStop(on)
+    localStorage.setItem(STOP_KEY, on ? "1" : "0")
+  }
 
   const spec = MODELS.find((m) => m.id === modelId)
 
@@ -141,10 +154,10 @@ export default function App() {
           </Card>
 
           <Card className="flex flex-col">
-            <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
+            <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
               <CardTitle className="text-sm font-medium">Tokens</CardTitle>
               {load.status === "ready" && (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary" className="font-mono text-[11px]">
                     {load.vocabSize.toLocaleString()} vocab
                   </Badge>
@@ -171,11 +184,21 @@ export default function App() {
                 <p className="text-sm text-muted-foreground">Nothing to tokenize yet.</p>
               ) : (
                 <Tabs defaultValue="text">
-                  <div className="mb-3 flex items-center gap-2">
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
                     <TabsList>
                       <TabsTrigger value="text">Text</TabsTrigger>
                       <TabsTrigger value="ids">IDs</TabsTrigger>
                     </TabsList>
+                    <div className="ml-2 flex items-center gap-2">
+                      <Switch
+                        id="stop-token"
+                        checked={includeStop}
+                        onCheckedChange={toggleStop}
+                      />
+                      <Label htmlFor="stop-token" className="text-xs font-normal">
+                        Stop token
+                      </Label>
+                    </div>
                     <Button size="sm" variant="ghost" className="ml-auto" onClick={copyIds}>
                       {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
                       Copy IDs
@@ -198,6 +221,15 @@ export default function App() {
             {result.stats.byteTokens.toLocaleString()} token
             {result.stats.byteTokens === 1 ? "" : "s"} decode to a partial UTF-8 sequence — this
             vocabulary splits some characters mid-byte, so the raw vocab entry is shown instead.
+          </p>
+        )}
+
+        {includeStop && (
+          <p className="text-xs text-muted-foreground">
+            Counting the stop token that ends a completion, so the total matches an API's{" "}
+            <code className="font-mono">completion_tokens</code>. A model may stop on any of
+            several tokens — Gemma 4 declares three — but every one of them is a single token,
+            so the count is content + 1 either way.
           </p>
         )}
 

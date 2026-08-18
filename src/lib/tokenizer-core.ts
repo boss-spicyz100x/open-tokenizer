@@ -41,3 +41,19 @@ export function vocabSize(tok: PreTrainedTokenizer): number {
   if (vocab && typeof vocab === "object") return Object.keys(vocab).length
   return Object.keys(tok.get_vocab() ?? {}).length
 }
+
+export type StopToken = { token: string; id: number }
+
+/**
+ * The stop token a completion ends on. Models may declare several — Gemma 4
+ * lists `<eos>`, `<turn|>` and `<tool_response|>` — and the server does not
+ * report which one fired. It does not matter for counting: every stop token is
+ * a single token, so an API's `completion_tokens` is always content + 1. This
+ * returns the declared eos purely so the UI can name something concrete.
+ */
+export function stopToken(tok: PreTrainedTokenizer): StopToken | null {
+  const t = tok as unknown as { eos_token?: string | null; eos_token_id?: number | null }
+  return t.eos_token && typeof t.eos_token_id === "number"
+    ? { token: t.eos_token, id: t.eos_token_id }
+    : null
+}

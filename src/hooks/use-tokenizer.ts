@@ -1,18 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { CacheReport, WorkerRequest, WorkerResponse } from "@/workers/tokenizer.worker"
-import { buildPieces, computeStats, type Stats, type TokenPiece } from "@/lib/tokens"
+import { buildPieces, computeStats, withStopToken, type Stats, type TokenPiece } from "@/lib/tokens"
+import type { StopToken } from "@/lib/tokenizer-core"
 
 export type LoadState =
   | { status: "idle" }
   | { status: "loading"; progress: number; file?: string }
-  | { status: "ready"; vocabSize: number; tokenizerClass: string }
+  | { status: "ready"; vocabSize: number; tokenizerClass: string; stop: StopToken | null }
   | { status: "error"; message: string }
 
 export type TokenizerResult = { pieces: TokenPiece[]; stats: Stats }
 
 const DEBOUNCE_MS = 150
 
-export function useTokenizer(modelId: string, text: string, allModelIds: string[]) {
+export function useTokenizer(
+  modelId: string,
+  text: string,
+  allModelIds: string[],
+  includeStop = false,
+) {
   const workerRef = useRef<Worker | null>(null)
   const modelIdRef = useRef(modelId)
   modelIdRef.current = modelId
@@ -54,7 +60,12 @@ export function useTokenizer(modelId: string, text: string, allModelIds: string[
           )
           break
         case "ready":
-          setLoad({ status: "ready", vocabSize: msg.vocabSize, tokenizerClass: msg.tokenizerClass })
+          setLoad({
+            status: "ready",
+            vocabSize: msg.vocabSize,
+            tokenizerClass: msg.tokenizerClass,
+            stop: msg.stop,
+          })
           break
         case "error":
           setLoad({ status: "error", message: msg.message })
@@ -127,11 +138,13 @@ export function useTokenizer(modelId: string, text: string, allModelIds: string[
     return () => clearTimeout(timer)
   }, [text, modelId, load.status, send])
 
+  const stop = load.status === "ready" ? load.stop : null
   const result = useMemo<TokenizerResult | null>(() => {
     if (!raw) return null
-    const pieces = buildPieces(raw.ids, raw.raw, raw.decoded)
+    const base = buildPieces(raw.ids, raw.raw, raw.decoded)
+    const pieces = includeStop ? withStopToken(base, stop) : base
     return { pieces, stats: computeStats(text, pieces) }
-  }, [raw, text])
+  }, [raw, text, includeStop, stop])
 
   const download = useCallback(() => {
     setLoad({ status: "loading", progress: 0 })

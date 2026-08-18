@@ -98,6 +98,24 @@ Three details worth knowing before changing that file:
 `get_vocab()` returns an empty object in transformers.js v3, so vocab size is
 read off the parsed `tokenizer.json` instead.
 
+### Matching an API's completion_tokens
+
+The **Stop token** switch counts the token a model emits to end a completion, so
+the total lines up with what a completion API reports. Without it the site counts
+pure content and will read consistently low against an API — the kind of small,
+stable offset that looks like a bug and hides real ones.
+
+A model may stop on any of several tokens (Gemma 4 declares `<eos>`, `<turn|>`
+and `<tool_response|>`) and the server does not say which fired. It does not
+matter: every stop token is a single token, so the count is content + 1 either
+way. There is a test pinning exactly that.
+
+When a count is still off by one with the switch on, suspect the text before
+suspecting the API. Trailing whitespace is invisible and costs a token — a
+trailing newline, a trailing space, or a leading newline each add exactly one.
+Anything pasted through a chat UI or terminal may have been trimmed, so compare
+against the raw API string (`repr()` or `json.dumps()`), not rendered output.
+
 ### Counting words
 
 Thai does not put spaces between words, so a whitespace split counts phrase

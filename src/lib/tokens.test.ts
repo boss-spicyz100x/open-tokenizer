@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { buildPieces, colorIndex, computeStats, countWords } from "./tokens"
+import { buildPieces, colorIndex, computeStats, countWords, withStopToken } from "./tokens"
 
 describe("countWords", () => {
   test("segments Thai without relying on spaces", () => {
@@ -97,5 +97,37 @@ describe("colorIndex", () => {
     expect(colorIndex(9)).toBe(9)
     expect(colorIndex(10)).toBe(0)
     expect(colorIndex(23)).toBe(3)
+  })
+})
+
+describe("withStopToken", () => {
+  const two = buildPieces([1, 2], ["a", "b"], ["a", "b"])
+
+  test("appends one token so the total matches completion_tokens", () => {
+    const withStop = withStopToken(two, { token: "<eos>", id: 1 })
+    expect(withStop.length).toBe(3)
+    expect(withStop[2].kind).toBe("stop")
+    expect(withStop[2].id).toBe(1)
+    expect(withStop[2].raw).toBe("<eos>")
+  })
+
+  test("leaves the text measurements alone", () => {
+    // The stop token is not part of the text, so only the token count moves.
+    const before = computeStats("ab", two)
+    const after = computeStats("ab", withStopToken(two, { token: "<eos>", id: 1 }))
+    expect(after.tokens).toBe(before.tokens + 1)
+    expect(after.chars).toBe(before.chars)
+    expect(after.bytes).toBe(before.bytes)
+  })
+
+  test("adds nothing to empty input", () => {
+    expect(withStopToken([], { token: "<eos>", id: 1 })).toEqual([])
+  })
+
+  test("still counts when the model declares no stop token", () => {
+    // GPT-2 exposes no eos in transformers.js; the count is +1 regardless.
+    const withStop = withStopToken(two, null)
+    expect(withStop.length).toBe(3)
+    expect(withStop[2].kind).toBe("stop")
   })
 })

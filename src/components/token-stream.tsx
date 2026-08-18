@@ -15,6 +15,9 @@ function label(piece: TokenPiece): string {
     case "bytes":
       // Partial UTF-8 — the decoded form is all U+FFFD, so show the vocab entry.
       return piece.raw
+    case "stop":
+      // Not part of the text; shown so the extra token in the count is visible.
+      return piece.raw
     default:
       return piece.decoded
   }
@@ -28,6 +31,7 @@ const Token = memo(function Token({ piece }: { piece: TokenPiece }) {
       className={cn(
         "token rounded-[3px] transition-colors hover:outline hover:outline-foreground/40",
         piece.kind === "bytes" && "text-muted-foreground underline decoration-dotted underline-offset-2",
+        piece.kind === "stop" && "ml-1 rounded border border-dashed px-1 text-[11px] text-muted-foreground",
         (piece.kind === "newline" || piece.kind === "tab") && "text-muted-foreground",
       )}
     >

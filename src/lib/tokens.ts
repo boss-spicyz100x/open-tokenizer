@@ -1,4 +1,4 @@
-export type TokenKind = "text" | "space" | "newline" | "tab" | "bytes"
+export type TokenKind = "text" | "space" | "newline" | "tab" | "bytes" | "stop"
 
 export type TokenPiece = {
   index: number
@@ -28,6 +28,28 @@ export function buildPieces(ids: number[], raw: string[], decoded: string[]): To
     decoded: decoded[index] ?? "",
     kind: classify(decoded[index] ?? ""),
   }))
+}
+
+/**
+ * Appends the stop token a model emits to end a completion. Counting it is what
+ * makes the total match an API's `completion_tokens`; the text itself is
+ * unchanged, so chars and bytes stay as they were.
+ */
+export function withStopToken(
+  pieces: TokenPiece[],
+  stop: { token: string; id: number } | null,
+): TokenPiece[] {
+  if (pieces.length === 0) return pieces
+  return [
+    ...pieces,
+    {
+      index: pieces.length,
+      id: stop?.id ?? -1,
+      raw: stop?.token ?? "<stop>",
+      decoded: "",
+      kind: "stop" as const,
+    },
+  ]
 }
 
 export type Stats = {
