@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Check, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,6 +21,7 @@ import { TokenIds, TokenStream } from "@/components/token-stream"
 import { useTokenizer } from "@/hooks/use-tokenizer"
 import { DEFAULT_MODEL, MODELS, tokenizerRepo, tokenizerRepos, type ModelSpec } from "@/lib/models"
 import { loadCustomModels, saveCustomModels } from "@/lib/custom-models"
+import { repairAliases } from "@/lib/share"
 import { AddModel } from "@/components/add-model"
 const STOP_KEY = "count-stop-token"
 
@@ -52,6 +53,22 @@ export default function App() {
   const [includeStop, setIncludeStop] = useState(
     () => localStorage.getItem(STOP_KEY) === "1",
   )
+  // Entries added before digest matching existed carry no alias, so re-resolve
+  // them once on load rather than leaving them with a duplicate download.
+  useEffect(() => {
+    const controller = new AbortController()
+    repairAliases(MODELS, loadCustomModels(), controller.signal)
+      .then((repaired) => {
+        if (!repaired || controller.signal.aborted) return
+        setCustom(repaired)
+        saveCustomModels(repaired)
+      })
+      .catch(() => {
+        // Offline, or the Hub is unreachable: keep what is stored.
+      })
+    return () => controller.abort()
+  }, [])
+
   const allModels = useMemo(() => [...MODELS, ...custom], [custom])
   // Only curated models declare aliases, so anything added from the Hub resolves
   // to itself and needs no special handling here.

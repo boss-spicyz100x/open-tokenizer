@@ -58,3 +58,52 @@ export async function findSharedRepo(
   )
   return found.find((r): r is string => r !== null) ?? null
 }
+
+/**
+ * Re-resolves sharing for models already in the list.
+ *
+ * Matching at add time is not enough: an entry added before this logic existed
+ * carries no alias and nothing would ever re-check it, so it keeps its own
+ * duplicate download forever. This also picks up the case where a model was
+ * added before the repo it should share with.
+ *
+ * Canonical is decided by position — curated models first, then insertion order
+ * — so two models with the same digest can never alias each other into a cycle.
+ * Returns the updated custom list, or null when nothing changed.
+ */
+export async function repairAliases(
+  curated: ModelSpec[],
+  custom: ModelSpec[],
+  signal?: AbortSignal,
+): Promise<ModelSpec[] | null> {
+  if (custom.length === 0) return null
+
+  let changed = false
+  const repaired: ModelSpec[] = []
+
+  for (const model of custom) {
+    // Candidates are everything ahead of this entry that is a download itself.
+    const earlier = [...curated, ...repaired]
+    const canonical = tokenizerRepos(earlier)
+
+    const digest = model.digest ?? (await digestFor(model.id, signal))
+    if (!digest) {
+      repaired.push(model)
+      continue
+    }
+
+    const digests = await Promise.all(
+      canonical.map(async (repo) => [repo, await digestFor(repo, signal)] as const),
+    )
+    const match = digests.find(([, d]) => d === digest)?.[0]
+    const next: ModelSpec = {
+      ...model,
+      digest,
+      ...(match && match !== model.id ? { tokenizer: match } : {}),
+    }
+    if (next.tokenizer !== model.tokenizer || next.digest !== model.digest) changed = true
+    repaired.push(next)
+  }
+
+  return changed ? repaired : null
+}

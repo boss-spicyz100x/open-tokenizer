@@ -90,6 +90,12 @@ The digest is the LFS sha256 where present, else the git blob oid, each
 prefixed (`sha256:` / `git:`) so the two kinds can never compare equal. Both are
 content-derived, so they hold across repos.
 
+Matching at add time alone is not enough: an entry added before this logic
+existed carries no alias and nothing would re-check it, so a repair pass runs on
+load and re-resolves added models, persisting what it finds. Canonical is decided
+by position — curated first, then insertion order — so two models sharing a
+digest can never alias each other into a cycle.
+
 Everything cache-related keys on the resolved repo rather than the model id, and
 removing it drops the tokenizer for every model sharing it, which the UI names
 in both directions. `tokenizerRepo` takes the model list to search precisely
