@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Check, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,7 +19,9 @@ import { StatsBar } from "@/components/stats-bar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { TokenIds, TokenStream } from "@/components/token-stream"
 import { useTokenizer } from "@/hooks/use-tokenizer"
-import { DEFAULT_MODEL, MODELS, TOKENIZER_REPOS, tokenizerRepo } from "@/lib/models"
+import { DEFAULT_MODEL, MODELS, tokenizerRepo, type ModelSpec } from "@/lib/models"
+import { loadCustomModels, saveCustomModels } from "@/lib/custom-models"
+import { AddModel } from "@/components/add-model"
 const STOP_KEY = "count-stop-token"
 
 const SAMPLES: { label: string; text: string }[] = [
@@ -43,19 +45,42 @@ const SAMPLES: { label: string; text: string }[] = [
 
 export default function App() {
   const [modelId, setModelId] = useState(DEFAULT_MODEL)
+  const [custom, setCustom] = useState<ModelSpec[]>(loadCustomModels)
   const [text, setText] = useState(SAMPLES[1].text)
   const [copied, setCopied] = useState(false)
   // Persisted: anyone cross-checking API counts wants this on every visit.
   const [includeStop, setIncludeStop] = useState(
     () => localStorage.getItem(STOP_KEY) === "1",
   )
+  const allModels = useMemo(() => [...MODELS, ...custom], [custom])
+  // Only curated models declare aliases, so anything added from the Hub resolves
+  // to itself and needs no special handling here.
+  const repos = useMemo(
+    () => [...new Set(allModels.map((m) => tokenizerRepo(m.id)))],
+    [allModels],
+  )
+
+  const addModel = (m: ModelSpec) => {
+    const next = [...custom, m]
+    setCustom(next)
+    saveCustomModels(next)
+    setModelId(m.id)
+  }
+
+  const forgetModel = (id: string) => {
+    const next = custom.filter((m) => m.id !== id)
+    setCustom(next)
+    saveCustomModels(next)
+    if (modelId === id) setModelId(DEFAULT_MODEL)
+  }
+
   // Several models can share one tokenizer download (the Gemma 4 family ships
   // byte-identical files), so loading and caching key on the repo, not the model.
   const repo = tokenizerRepo(modelId)
   const { load, result, encoding, cache, download, remove, removeAll } = useTokenizer(
     repo,
     text,
-    TOKENIZER_REPOS,
+    repos,
     includeStop,
   )
 
@@ -64,7 +89,7 @@ export default function App() {
     localStorage.setItem(STOP_KEY, on ? "1" : "0")
   }
 
-  const spec = MODELS.find((m) => m.id === modelId)
+  const spec = allModels.find((m) => m.id === modelId)
 
   const copyIds = async () => {
     if (!result) return
@@ -88,11 +113,11 @@ export default function App() {
             <SelectTrigger className="w-[280px]" aria-label="Tokenizer model">
               {/* Base UI renders the raw value by default; map it back to the label. */}
               <SelectValue>
-                {(value: string) => MODELS.find((m) => m.id === value)?.label ?? value}
+                {(value: string) => allModels.find((m) => m.id === value)?.label ?? value}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {MODELS.map((m) => (
+              {allModels.map((m) => (
                 <SelectItem key={m.id} value={m.id}>
                   <span className="flex flex-col items-start">
                     <span>{m.label}</span>
@@ -105,6 +130,8 @@ export default function App() {
             </SelectContent>
           </Select>
 
+          <AddModel known={allModels.map((m) => m.id)} onAdd={addModel} />
+
           <ThemeToggle />
         </div>
       </header>
@@ -112,6 +139,7 @@ export default function App() {
       <main className="mx-auto max-w-6xl space-y-4 px-4 py-6">
         <ModelStorage
           spec={spec ?? MODELS[0]}
+          onForget={spec?.custom ? () => forgetModel(spec.id) : undefined}
           load={load}
           entry={cache[repo]}
           cache={cache}

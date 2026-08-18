@@ -20,6 +20,8 @@ type Props = {
   onDownload: () => void
   onRemove: () => void
   onRemoveAll: () => void
+  /** Only set for models added from the Hub, which can be dropped entirely. */
+  onForget?: () => void
 }
 
 export function ModelStorage({
@@ -30,6 +32,7 @@ export function ModelStorage({
   onDownload,
   onRemove,
   onRemoveAll,
+  onForget,
 }: Props) {
   const cachedModels = Object.entries(cache).filter(([, e]) => e.cached)
   const totalBytes = cachedModels.reduce((sum, [, e]) => sum + e.bytes, 0)
@@ -99,6 +102,16 @@ export function ModelStorage({
               {shared.length > 0 && ` The same files serve ${sharedNames}.`}
             </p>
           </div>
+          {onForget && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-auto px-2 py-1 text-xs text-muted-foreground"
+          onClick={onForget}
+        >
+          Forget model
+        </Button>
+          )}
           {summary}
           <Button size="sm" onClick={onDownload}>
             <Download className="size-3.5" />
@@ -125,6 +138,16 @@ export function ModelStorage({
         >
           <Trash2 className="size-3.5" />
           Remove download
+        </Button>
+      )}
+      {onForget && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-auto px-2 py-1 text-xs text-muted-foreground"
+          onClick={onForget}
+        >
+          Forget model
         </Button>
       )}
       <div className="ml-auto">{summary}</div>

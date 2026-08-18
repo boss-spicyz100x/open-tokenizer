@@ -11,6 +11,8 @@ export type ModelSpec = {
    * tokenizer_config.json across sizes, so they share one 31 MB download.
    */
   tokenizer?: string
+  /** Added by the user from the Hub, rather than shipped in this list. */
+  custom?: boolean
 }
 
 /**

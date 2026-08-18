@@ -65,6 +65,18 @@ is why they are absent.
 | `deepseek-ai/DeepSeek-V3.2` | 128,000 |
 | `openai-community/gpt2` | 50,257 |
 
+The list in `models.ts` is a starting point, not the limit. **Add** searches the
+Hugging Face Hub live and accepts any public repo id, and added models persist in
+`localStorage`. A repo is usable only if it is ungated and ships
+`tokenizer.json`; anything else is rejected before downloading, with a reason.
+Gated repos (Llama, some Mistral) answer 401 in the browser and cannot be used —
+there is nowhere safe to put a token in a static page.
+
+Sizes shown for added models are read from the Hub's tree API rather than a HEAD
+on the file: small tokenizers are stored inline rather than in LFS, and those
+responses carry neither `x-linked-size` nor a CORS-readable `content-length`
+after following their redirect.
+
 Models that ship identical tokenizer files share one download. The Gemma 4
 family serves byte-identical `tokenizer.json` and `tokenizer_config.json` across
 sizes, so `gemma-4-31B-it` sets `tokenizer: "google/gemma-4-26B-A4B-it"` in
