@@ -65,6 +65,18 @@ is why they are absent.
 | `deepseek-ai/DeepSeek-V3.2` | 128,000 |
 | `openai-community/gpt2` | 50,257 |
 
+Models that ship identical tokenizer files share one download. The Gemma 4
+family serves byte-identical `tokenizer.json` and `tokenizer_config.json` across
+sizes, so `gemma-4-31B-it` sets `tokenizer: "google/gemma-4-26B-A4B-it"` in
+`models.ts` and fetching either one covers both — 31 MB instead of 62 MB.
+Everything cache-related keys on that repo rather than the model id, and removing
+it drops the tokenizer for every model sharing it, which the UI says out loud.
+
+Aliasing is only sound while the files really are identical, so a test compares
+the ETags Hugging Face serves (the sha256 for LFS objects) with two HEAD
+requests. If either repo is republished with a different tokenizer, that test
+fails and the alias has to go.
+
 Tokenizer files are 1–32 MB, so **nothing downloads until you click Download**.
 Selecting a model only shows what it would cost. Once fetched, files live in the
 browser's Cache API and load instantly on later visits — that local load happens

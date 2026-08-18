@@ -5,6 +5,12 @@ export type ModelSpec = {
   /** Approximate tokenizer.json download size, shown before the first load. */
   download: string
   note: string
+  /**
+   * Repo whose tokenizer files this model uses, when they are not its own.
+   * The Gemma 4 family ships byte-identical tokenizer.json and
+   * tokenizer_config.json across sizes, so they share one 31 MB download.
+   */
+  tokenizer?: string
 }
 
 /**
@@ -25,7 +31,8 @@ export const MODELS: ModelSpec[] = [
     label: "Gemma 4 31B-it",
     maker: "Google",
     download: "31 MB",
-    note: "262k vocab — identical tokenizer to the 26B-A4B model",
+    note: "262k vocab — byte-identical tokenizer to the 26B-A4B model",
+    tokenizer: "google/gemma-4-26B-A4B-it",
   },
   {
     id: "scb10x/typhoon2.1-gemma3-12b",
@@ -65,3 +72,18 @@ export const MODELS: ModelSpec[] = [
 ]
 
 export const DEFAULT_MODEL = MODELS[0].id
+
+/** The repo a model's tokenizer files actually come from. */
+export function tokenizerRepo(modelId: string): string {
+  const spec = MODELS.find((m) => m.id === modelId)
+  return spec?.tokenizer ?? modelId
+}
+
+/** Distinct downloads, which is fewer than the number of models. */
+export const TOKENIZER_REPOS = [...new Set(MODELS.map((m) => m.tokenizer ?? m.id))]
+
+/** Other models served by the same download — they share its cache entry. */
+export function modelsSharing(modelId: string): ModelSpec[] {
+  const repo = tokenizerRepo(modelId)
+  return MODELS.filter((m) => m.id !== modelId && (m.tokenizer ?? m.id) === repo)
+}

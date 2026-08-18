@@ -19,9 +19,7 @@ import { StatsBar } from "@/components/stats-bar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { TokenIds, TokenStream } from "@/components/token-stream"
 import { useTokenizer } from "@/hooks/use-tokenizer"
-import { DEFAULT_MODEL, MODELS } from "@/lib/models"
-
-const MODEL_IDS = MODELS.map((m) => m.id)
+import { DEFAULT_MODEL, MODELS, TOKENIZER_REPOS, tokenizerRepo } from "@/lib/models"
 const STOP_KEY = "count-stop-token"
 
 const SAMPLES: { label: string; text: string }[] = [
@@ -51,10 +49,13 @@ export default function App() {
   const [includeStop, setIncludeStop] = useState(
     () => localStorage.getItem(STOP_KEY) === "1",
   )
+  // Several models can share one tokenizer download (the Gemma 4 family ships
+  // byte-identical files), so loading and caching key on the repo, not the model.
+  const repo = tokenizerRepo(modelId)
   const { load, result, encoding, cache, download, remove, removeAll } = useTokenizer(
-    modelId,
+    repo,
     text,
-    MODEL_IDS,
+    TOKENIZER_REPOS,
     includeStop,
   )
 
@@ -96,7 +97,7 @@ export default function App() {
                   <span className="flex flex-col items-start">
                     <span>{m.label}</span>
                     <span className="text-xs text-muted-foreground">
-                      {m.maker} · {cache[m.id]?.cached ? "downloaded" : m.download}
+                      {m.maker} · {cache[tokenizerRepo(m.id)]?.cached ? "downloaded" : m.download}
                     </span>
                   </span>
                 </SelectItem>
@@ -112,10 +113,10 @@ export default function App() {
         <ModelStorage
           spec={spec ?? MODELS[0]}
           load={load}
-          entry={cache[modelId]}
+          entry={cache[repo]}
           cache={cache}
           onDownload={download}
-          onRemove={() => remove(modelId)}
+          onRemove={() => remove(repo)}
           onRemoveAll={removeAll}
         />
 
