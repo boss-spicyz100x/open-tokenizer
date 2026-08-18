@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { describeFailure, inspectModel, searchModels, type HubResult } from "@/lib/hub"
 import { specFromRepo } from "@/lib/custom-models"
+import { findSharedRepo } from "@/lib/share"
 import type { ModelSpec } from "@/lib/models"
 
 const DEBOUNCE_MS = 250
@@ -23,12 +24,13 @@ function compact(n: number): string {
 }
 
 export function AddModel({
-  known,
+  models,
   onAdd,
 }: {
-  known: string[]
+  models: ModelSpec[]
   onAdd: (spec: ModelSpec) => void
 }) {
+  const known = models.map((m) => m.id)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<HubResult[]>([])
@@ -84,7 +86,14 @@ export function AddModel({
         setError(describeFailure(check.reason))
         return
       }
-      onAdd(specFromRepo(id, check.bytes))
+      // Reuse an existing download when the files are byte-identical — the whole
+      // Gemma 4 family ships one tokenizer, as do many finetunes of a base model.
+      const shared = await findSharedRepo(check.digest, models, abort.current.signal)
+      onAdd({
+        ...specFromRepo(id, check.bytes),
+        digest: check.digest ?? undefined,
+        ...(shared && shared !== id ? { tokenizer: shared } : {}),
+      })
       setOpen(false)
     } catch {
       setError("Could not reach Hugging Face. Check your connection and try again.")

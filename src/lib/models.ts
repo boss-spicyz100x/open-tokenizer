@@ -13,6 +13,8 @@ export type ModelSpec = {
   tokenizer?: string
   /** Added by the user from the Hub, rather than shipped in this list. */
   custom?: boolean
+  /** Content digest of tokenizer.json, used to spot identical tokenizers. */
+  digest?: string
 }
 
 /**
@@ -75,17 +77,24 @@ export const MODELS: ModelSpec[] = [
 
 export const DEFAULT_MODEL = MODELS[0].id
 
-/** The repo a model's tokenizer files actually come from. */
-export function tokenizerRepo(modelId: string): string {
-  const spec = MODELS.find((m) => m.id === modelId)
-  return spec?.tokenizer ?? modelId
+/**
+ * The repo a model's tokenizer files actually come from.
+ *
+ * Takes the list to search because models added from the Hub carry aliases too,
+ * and looking only at the curated list would silently ignore them — the model
+ * would re-download a tokenizer it already has.
+ */
+export function tokenizerRepo(modelId: string, models: ModelSpec[] = MODELS): string {
+  return models.find((m) => m.id === modelId)?.tokenizer ?? modelId
 }
 
 /** Distinct downloads, which is fewer than the number of models. */
-export const TOKENIZER_REPOS = [...new Set(MODELS.map((m) => m.tokenizer ?? m.id))]
+export function tokenizerRepos(models: ModelSpec[] = MODELS): string[] {
+  return [...new Set(models.map((m) => tokenizerRepo(m.id, models)))]
+}
 
 /** Other models served by the same download — they share its cache entry. */
-export function modelsSharing(modelId: string): ModelSpec[] {
-  const repo = tokenizerRepo(modelId)
-  return MODELS.filter((m) => m.id !== modelId && (m.tokenizer ?? m.id) === repo)
+export function modelsSharing(modelId: string, models: ModelSpec[] = MODELS): ModelSpec[] {
+  const repo = tokenizerRepo(modelId, models)
+  return models.filter((m) => m.id !== modelId && tokenizerRepo(m.id, models) === repo)
 }

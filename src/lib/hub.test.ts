@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { describeFailure, inspectModel, searchModels } from "./hub"
+import { describeFailure, inspectModel, searchModels, tokenizerDigest } from "./hub"
 import { specFromRepo } from "./custom-models"
 
 describe("specFromRepo", () => {
@@ -65,4 +65,42 @@ describe("searchModels", () => {
   test("returns nothing for a query that matches nothing", async () => {
     expect(await searchModels("zzzz-no-such-model-zzzz")).toEqual([])
   }, 30_000)
+})
+
+describe("tokenizerDigest", () => {
+  const T = 30_000
+
+  test("is equal across the whole Gemma 4 family", async () => {
+    // Five sizes, one tokenizer. This is what lets adding any of them from the
+    // Hub reuse a download instead of fetching another 31 MB.
+    const family = [
+      "google/gemma-4-26B-A4B-it",
+      "google/gemma-4-31B-it",
+      "google/gemma-4-12B-it",
+      "google/gemma-4-E4B-it",
+      "google/gemma-4-E2B-it",
+    ]
+    const digests = await Promise.all(family.map((id) => tokenizerDigest(id)))
+    expect(digests[0]).toBeTruthy()
+    expect(new Set(digests).size).toBe(1)
+  }, T)
+
+  test("differs between unrelated vocabularies", async () => {
+    const [gemma, qwen] = await Promise.all([
+      tokenizerDigest("google/gemma-4-26B-A4B-it"),
+      tokenizerDigest("Qwen/Qwen3.8-27B"),
+    ])
+    expect(gemma).not.toBe(qwen)
+  }, T)
+
+  test("is namespaced so LFS and git digests never compare equal", async () => {
+    // gpt2's tokenizer.json is small enough to be stored inline, not in LFS, so
+    // its digest is a git blob oid rather than a sha256.
+    const [big, small] = await Promise.all([
+      tokenizerDigest("google/gemma-4-26B-A4B-it"),
+      tokenizerDigest("openai-community/gpt2"),
+    ])
+    expect(big?.startsWith("sha256:")).toBe(true)
+    expect(small?.startsWith("git:")).toBe(true)
+  }, T)
 })

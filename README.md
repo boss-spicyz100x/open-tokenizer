@@ -77,17 +77,24 @@ on the file: small tokenizers are stored inline rather than in LFS, and those
 responses carry neither `x-linked-size` nor a CORS-readable `content-length`
 after following their redirect.
 
-Models that ship identical tokenizer files share one download. The Gemma 4
-family serves byte-identical `tokenizer.json` and `tokenizer_config.json` across
-sizes, so `gemma-4-31B-it` sets `tokenizer: "google/gemma-4-26B-A4B-it"` in
-`models.ts` and fetching either one covers both — 31 MB instead of 62 MB.
-Everything cache-related keys on that repo rather than the model id, and removing
-it drops the tokenizer for every model sharing it, which the UI says out loud.
+Models that ship identical tokenizer files share one download, and that is
+decided by **content digest, not a hardcoded list**. Adding a model compares its
+tokenizer.json digest against every repo already in the list; on a match it
+records `tokenizer: <that repo>` and reuses the existing download.
 
-Aliasing is only sound while the files really are identical, so a test compares
-the ETags Hugging Face serves (the sha256 for LFS objects) with two HEAD
-requests. If either repo is republished with a different tokenizer, that test
-fails and the alias has to go.
+This matters more than it first appears. All five Gemma 4 sizes (26B-A4B, 31B,
+12B, E4B, E2B) ship one identical tokenizer, as do countless finetunes of a
+common base — no fixed table would keep up, and every miss is another 31 MB.
+
+The digest is the LFS sha256 where present, else the git blob oid, each
+prefixed (`sha256:` / `git:`) so the two kinds can never compare equal. Both are
+content-derived, so they hold across repos.
+
+Everything cache-related keys on the resolved repo rather than the model id, and
+removing it drops the tokenizer for every model sharing it, which the UI names
+in both directions. `tokenizerRepo` takes the model list to search precisely
+because added models carry aliases too — resolving against only the curated list
+silently re-downloads, and there is a test pinning that.
 
 Tokenizer files are 1–32 MB, so **nothing downloads until you click Download**.
 Selecting a model only shows what it would cost. Once fetched, files live in the

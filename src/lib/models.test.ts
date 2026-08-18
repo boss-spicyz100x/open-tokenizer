@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { MODELS, TOKENIZER_REPOS, modelsSharing, tokenizerRepo } from "./models"
+import { MODELS, modelsSharing, tokenizerRepo, tokenizerRepos, type ModelSpec } from "./models"
 
 describe("tokenizerRepo", () => {
   test("returns a model's own id when it ships its own tokenizer", () => {
@@ -16,17 +16,17 @@ describe("tokenizerRepo", () => {
   })
 })
 
-describe("TOKENIZER_REPOS", () => {
+describe("tokenizerRepos", () => {
   test("collapses shared tokenizers into one download each", () => {
-    expect(TOKENIZER_REPOS.length).toBeLessThan(MODELS.length)
-    expect(new Set(TOKENIZER_REPOS).size).toBe(TOKENIZER_REPOS.length)
-    expect(TOKENIZER_REPOS).not.toContain("google/gemma-4-31B-it")
-    expect(TOKENIZER_REPOS).toContain("google/gemma-4-26B-A4B-it")
+    expect(tokenizerRepos().length).toBeLessThan(MODELS.length)
+    expect(new Set(tokenizerRepos()).size).toBe(tokenizerRepos().length)
+    expect(tokenizerRepos()).not.toContain("google/gemma-4-31B-it")
+    expect(tokenizerRepos()).toContain("google/gemma-4-26B-A4B-it")
   })
 
   test("every alias target is itself a real download", () => {
     for (const m of MODELS) {
-      expect(TOKENIZER_REPOS).toContain(tokenizerRepo(m.id))
+      expect(tokenizerRepos()).toContain(tokenizerRepo(m.id))
     }
   })
 
@@ -83,4 +83,44 @@ describe("alias validity", () => {
     },
     60_000,
   )
+})
+
+describe("aliases on added models", () => {
+  // A model added from the Hub can alias a curated one, so resolution has to
+  // search the full list rather than only what shipped in models.ts.
+  const added: ModelSpec[] = [
+    {
+      id: "google/gemma-4-12B-it",
+      label: "gemma-4-12B-it",
+      maker: "google",
+      download: "31 MB",
+      note: "",
+      custom: true,
+      tokenizer: "google/gemma-4-26B-A4B-it",
+    },
+  ]
+  const all = [...MODELS, ...added]
+
+  test("resolves an added model to the repo it shares", () => {
+    expect(tokenizerRepo("google/gemma-4-12B-it", all)).toBe("google/gemma-4-26B-A4B-it")
+  })
+
+  test("ignoring the list would re-download — the regression this guards", () => {
+    expect(tokenizerRepo("google/gemma-4-12B-it")).toBe("google/gemma-4-12B-it")
+  })
+
+  test("adds no extra download", () => {
+    expect(tokenizerRepos(all)).toEqual(tokenizerRepos())
+  })
+
+  test("names every sibling in both directions", () => {
+    expect(modelsSharing("google/gemma-4-12B-it", all).map((m) => m.id).sort()).toEqual([
+      "google/gemma-4-26B-A4B-it",
+      "google/gemma-4-31B-it",
+    ])
+    expect(modelsSharing("google/gemma-4-26B-A4B-it", all).map((m) => m.id).sort()).toEqual([
+      "google/gemma-4-12B-it",
+      "google/gemma-4-31B-it",
+    ])
+  })
 })

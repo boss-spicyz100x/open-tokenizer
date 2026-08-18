@@ -19,7 +19,7 @@ import { StatsBar } from "@/components/stats-bar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { TokenIds, TokenStream } from "@/components/token-stream"
 import { useTokenizer } from "@/hooks/use-tokenizer"
-import { DEFAULT_MODEL, MODELS, tokenizerRepo, type ModelSpec } from "@/lib/models"
+import { DEFAULT_MODEL, MODELS, tokenizerRepo, tokenizerRepos, type ModelSpec } from "@/lib/models"
 import { loadCustomModels, saveCustomModels } from "@/lib/custom-models"
 import { AddModel } from "@/components/add-model"
 const STOP_KEY = "count-stop-token"
@@ -55,10 +55,7 @@ export default function App() {
   const allModels = useMemo(() => [...MODELS, ...custom], [custom])
   // Only curated models declare aliases, so anything added from the Hub resolves
   // to itself and needs no special handling here.
-  const repos = useMemo(
-    () => [...new Set(allModels.map((m) => tokenizerRepo(m.id)))],
-    [allModels],
-  )
+  const repos = useMemo(() => tokenizerRepos(allModels), [allModels])
 
   const addModel = (m: ModelSpec) => {
     const next = [...custom, m]
@@ -76,7 +73,7 @@ export default function App() {
 
   // Several models can share one tokenizer download (the Gemma 4 family ships
   // byte-identical files), so loading and caching key on the repo, not the model.
-  const repo = tokenizerRepo(modelId)
+  const repo = tokenizerRepo(modelId, allModels)
   const { load, result, encoding, cache, download, remove, removeAll } = useTokenizer(
     repo,
     text,
@@ -122,7 +119,7 @@ export default function App() {
                   <span className="flex flex-col items-start">
                     <span>{m.label}</span>
                     <span className="text-xs text-muted-foreground">
-                      {m.maker} · {cache[tokenizerRepo(m.id)]?.cached ? "downloaded" : m.download}
+                      {m.maker} · {cache[tokenizerRepo(m.id, allModels)]?.cached ? "downloaded" : m.download}
                     </span>
                   </span>
                 </SelectItem>
@@ -130,7 +127,7 @@ export default function App() {
             </SelectContent>
           </Select>
 
-          <AddModel known={allModels.map((m) => m.id)} onAdd={addModel} />
+          <AddModel models={allModels} onAdd={addModel} />
 
           <ThemeToggle />
         </div>
@@ -139,6 +136,7 @@ export default function App() {
       <main className="mx-auto max-w-6xl space-y-4 px-4 py-6">
         <ModelStorage
           spec={spec ?? MODELS[0]}
+          models={allModels}
           onForget={spec?.custom ? () => forgetModel(spec.id) : undefined}
           load={load}
           entry={cache[repo]}

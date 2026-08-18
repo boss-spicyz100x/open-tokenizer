@@ -22,6 +22,8 @@ type Props = {
   onRemoveAll: () => void
   /** Only set for models added from the Hub, which can be dropped entirely. */
   onForget?: () => void
+  /** Full list, so sharing resolves across added models too. */
+  models: ModelSpec[]
 }
 
 export function ModelStorage({
@@ -33,13 +35,14 @@ export function ModelStorage({
   onRemove,
   onRemoveAll,
   onForget,
+  models,
 }: Props) {
   const cachedModels = Object.entries(cache).filter(([, e]) => e.cached)
   const totalBytes = cachedModels.reduce((sum, [, e]) => sum + e.bytes, 0)
 
   // Sharing cuts both ways: one download serves these, and removing it drops
   // them all. Say so rather than letting either come as a surprise.
-  const shared = modelsSharing(spec.id)
+  const shared = modelsSharing(spec.id, models)
   const sharedNames = shared.map((m) => m.label).join(", ")
 
   const summary = cachedModels.length > 0 && (
