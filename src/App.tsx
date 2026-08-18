@@ -1,8 +1,7 @@
 import { useState } from "react"
-import { AlertCircle, Check, Copy, Loader2 } from "lucide-react"
+import { Check, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
 import {
   Select,
   SelectContent,
@@ -13,11 +12,14 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { ModelStorage } from "@/components/model-storage"
 import { StatsBar } from "@/components/stats-bar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { TokenIds, TokenStream } from "@/components/token-stream"
 import { useTokenizer } from "@/hooks/use-tokenizer"
 import { DEFAULT_MODEL, MODELS } from "@/lib/models"
+
+const MODEL_IDS = MODELS.map((m) => m.id)
 
 const SAMPLES: { label: string; text: string }[] = [
   {
@@ -42,7 +44,11 @@ export default function App() {
   const [modelId, setModelId] = useState(DEFAULT_MODEL)
   const [text, setText] = useState(SAMPLES[1].text)
   const [copied, setCopied] = useState(false)
-  const { load, result, encoding, retry } = useTokenizer(modelId, text)
+  const { load, result, encoding, cache, download, remove, removeAll } = useTokenizer(
+    modelId,
+    text,
+    MODEL_IDS,
+  )
 
   const spec = MODELS.find((m) => m.id === modelId)
 
@@ -77,7 +83,7 @@ export default function App() {
                   <span className="flex flex-col items-start">
                     <span>{m.label}</span>
                     <span className="text-xs text-muted-foreground">
-                      {m.maker} · {m.download}
+                      {m.maker} · {cache[m.id]?.cached ? "downloaded" : m.download}
                     </span>
                   </span>
                 </SelectItem>
@@ -90,32 +96,15 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-4 px-4 py-6">
-        {load.status === "loading" && (
-          <Card>
-            <CardContent className="space-y-3 py-5">
-              <div className="flex items-center gap-2 text-sm">
-                <Loader2 className="size-4 animate-spin" />
-                <span>
-                  Downloading the {spec?.label} tokenizer ({spec?.download}) — cached by the browser
-                  after this.
-                </span>
-              </div>
-              <Progress value={load.progress} />
-            </CardContent>
-          </Card>
-        )}
-
-        {load.status === "error" && (
-          <Card className="border-destructive/50">
-            <CardContent className="flex flex-wrap items-center gap-3 py-5 text-sm">
-              <AlertCircle className="size-4 text-destructive" />
-              <span className="mr-auto">Could not load this tokenizer: {load.message}</span>
-              <Button size="sm" variant="outline" onClick={retry}>
-                Retry
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        <ModelStorage
+          spec={spec ?? MODELS[0]}
+          load={load}
+          entry={cache[modelId]}
+          cache={cache}
+          onDownload={download}
+          onRemove={() => remove(modelId)}
+          onRemoveAll={removeAll}
+        />
 
         {result && <StatsBar stats={result.stats} stale={encoding} />}
 
@@ -168,10 +157,16 @@ export default function App() {
               )}
             </CardHeader>
             <CardContent className="flex-1">
-              {!result ? (
+              {load.status !== "ready" ? (
                 <p className="text-sm text-muted-foreground">
-                  {load.status === "error" ? "No tokenizer loaded." : "Loading tokenizer…"}
+                  {load.status === "idle"
+                    ? "Download this tokenizer to see how it splits your text."
+                    : load.status === "error"
+                      ? "No tokenizer loaded."
+                      : "Loading tokenizer…"}
                 </p>
+              ) : !result ? (
+                <p className="text-sm text-muted-foreground">Tokenizing…</p>
               ) : result.pieces.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Nothing to tokenize yet.</p>
               ) : (

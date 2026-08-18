@@ -53,7 +53,14 @@ is why they are absent.
 | `deepseek-ai/DeepSeek-V3.2` | 128,000 |
 | `openai-community/gpt2` | 50,257 |
 
-Tokenizer files are 1–32 MB and are cached by the browser after the first load.
+Tokenizer files are 1–32 MB, so **nothing downloads until you click Download**.
+Selecting a model only shows what it would cost. Once fetched, files live in the
+browser's Cache API and load instantly on later visits — that local load happens
+without asking, since it costs no network. Each cached tokenizer can be removed
+individually, or all at once, from the panel above the input.
+
+Cache sizes shown in the UI are measured from the stored responses rather than
+the estimates in `models.ts`, so they reflect what is actually on disk.
 
 ## How it works
 
@@ -78,6 +85,18 @@ Three details worth knowing before changing that file:
 
 `get_vocab()` returns an empty object in transformers.js v3, so vocab size is
 read off the parsed `tokenizer.json` instead.
+
+### Removing a download
+
+transformers.js stores files in `caches.open('transformers-cache')`, keyed by
+full remote URL (`https://huggingface.co/{model}/resolve/main/{file}`), so the
+worker finds a model's files by matching that prefix instead of guessing
+filenames.
+
+Removal is reported back with a dedicated `removed` message rather than a plain
+status refresh. The UI has to reset that model to "not downloaded" in the *same*
+commit that clears its cached flag — inferring it from the report instead races
+the load-if-cached effect, which re-downloads the files it just deleted.
 
 ## The ONNX stub
 

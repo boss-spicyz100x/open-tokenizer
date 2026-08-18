@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { WorkerRequest, WorkerResponse } from "@/workers/tokenizer.worker"
+import type { CacheReport, WorkerRequest, WorkerResponse } from "@/workers/tokenizer.worker"
 import { buildPieces, computeStats, type Stats, type TokenPiece } from "@/lib/tokens"
 
 export type LoadState =
@@ -8,17 +8,17 @@ export type LoadState =
   | { status: "ready"; vocabSize: number; tokenizerClass: string }
   | { status: "error"; message: string }
 
-export type TokenizerResult = {
-  pieces: TokenPiece[]
-  stats: Stats
-}
+export type TokenizerResult = { pieces: TokenPiece[]; stats: Stats }
 
 const DEBOUNCE_MS = 150
 
-export function useTokenizer(modelId: string, text: string) {
+export function useTokenizer(modelId: string, text: string, allModelIds: string[]) {
   const workerRef = useRef<Worker | null>(null)
+  const modelIdRef = useRef(modelId)
+  modelIdRef.current = modelId
   const requestId = useRef(0)
   const [load, setLoad] = useState<LoadState>({ status: "idle" })
+  const [cache, setCache] = useState<CacheReport>({})
   const [raw, setRaw] = useState<{ ids: number[]; raw: string[]; decoded: string[] } | null>(null)
   const [encoding, setEncoding] = useState(false)
 
@@ -33,6 +33,19 @@ export function useTokenizer(modelId: string, text: string) {
     worker.addEventListener("message", (event: MessageEvent<WorkerResponse>) => {
       const msg = event.data
       switch (msg.type) {
+        case "status":
+          setCache(msg.report)
+          break
+        case "removed":
+          setCache(msg.report)
+          // Batched with setCache, so the load-if-cached effect sees both the
+          // idle status and the cleared flag and stays put.
+          if (msg.modelIds.includes(modelIdRef.current)) {
+            setLoad({ status: "idle" })
+            setRaw(null)
+            setEncoding(false)
+          }
+          break
         case "progress":
           setLoad((prev) =>
             prev.status === "ready" || prev.status === "error"
@@ -64,14 +77,40 @@ export function useTokenizer(modelId: string, text: string) {
 
   const send = useCallback((msg: WorkerRequest) => workerRef.current?.postMessage(msg), [])
 
-  // Load whenever the selected model changes.
-  useEffect(() => {
-    setLoad({ status: "loading", progress: 0 })
-    setRaw(null)
-    send({ type: "load", modelId })
-  }, [modelId, send])
+  const ids = useMemo(() => allModelIds.join(","), [allModelIds])
+  const refreshStatus = useCallback(
+    () => send({ type: "status", modelIds: ids.split(",") }),
+    [ids, send],
+  )
 
-  // Re-encode on text or model change, once the tokenizer is ready.
+  useEffect(() => {
+    refreshStatus()
+  }, [refreshStatus])
+
+  // Switching models always drops back to idle; nothing is fetched implicitly.
+  useEffect(() => {
+    setRaw(null)
+    setEncoding(false)
+    setLoad({ status: "idle" })
+  }, [modelId])
+
+  // Selecting a model never starts a download. If its files are already cached,
+  // loading is local and instant, so that happens without asking. Gating on
+  // `idle` keeps this from re-firing once the load is under way — otherwise the
+  // status refresh below would flip `cached` and restart it in a loop.
+  const cached = cache[modelId]?.cached ?? false
+  useEffect(() => {
+    if (!cached || load.status !== "idle") return
+    setLoad({ status: "loading", progress: 0 })
+    send({ type: "load", modelId })
+  }, [cached, load.status, modelId, send])
+
+  // A finished load may have populated the cache, so re-measure it.
+  useEffect(() => {
+    if (load.status === "ready") refreshStatus()
+  }, [load.status, refreshStatus])
+
+  // Re-encode on text change, once the tokenizer is ready.
   useEffect(() => {
     if (load.status !== "ready") return
     if (!text) {
@@ -81,7 +120,10 @@ export function useTokenizer(modelId: string, text: string) {
     }
     setEncoding(true)
     const id = ++requestId.current
-    const timer = setTimeout(() => send({ type: "encode", modelId, text, requestId: id }), DEBOUNCE_MS)
+    const timer = setTimeout(
+      () => send({ type: "encode", modelId, text, requestId: id }),
+      DEBOUNCE_MS,
+    )
     return () => clearTimeout(timer)
   }, [text, modelId, load.status, send])
 
@@ -91,10 +133,21 @@ export function useTokenizer(modelId: string, text: string) {
     return { pieces, stats: computeStats(text, pieces) }
   }, [raw, text])
 
-  const retry = useCallback(() => {
+  const download = useCallback(() => {
     setLoad({ status: "loading", progress: 0 })
     send({ type: "load", modelId })
   }, [modelId, send])
 
-  return { load, result, encoding, retry }
+  // State is reset by the worker's "removed" reply, not optimistically here.
+  const remove = useCallback(
+    (target: string) => send({ type: "remove", modelId: target, modelIds: ids.split(",") }),
+    [ids, send],
+  )
+
+  const removeAll = useCallback(
+    () => send({ type: "removeAll", modelIds: ids.split(",") }),
+    [ids, send],
+  )
+
+  return { load, result, encoding, cache, download, remove, removeAll, refreshStatus }
 }
