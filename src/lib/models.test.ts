@@ -3,8 +3,9 @@ import { MODELS, modelsSharing, tokenizerRepo, tokenizerRepos, type ModelSpec } 
 
 describe("tokenizerRepo", () => {
   test("returns a model's own id when it ships its own tokenizer", () => {
+    // In the registry and not aliased — distinct from the fallback below.
+    expect(MODELS.some((m) => m.id === "Qwen/Qwen3.8-27B")).toBe(true)
     expect(tokenizerRepo("Qwen/Qwen3.8-27B")).toBe("Qwen/Qwen3.8-27B")
-    expect(tokenizerRepo("openai-community/gpt2")).toBe("openai-community/gpt2")
   })
 
   test("points aliased models at the repo that actually holds the files", () => {
@@ -49,7 +50,10 @@ describe("modelsSharing", () => {
   })
 
   test("is empty for a model that shares with nothing", () => {
-    expect(modelsSharing("openai-community/gpt2")).toEqual([])
+    // A registry entry with a genuinely distinct vocabulary, so the empty
+    // result means "no siblings" rather than "not in the list".
+    expect(MODELS.some((m) => m.id === "Qwen/Qwen3.8-27B")).toBe(true)
+    expect(modelsSharing("Qwen/Qwen3.8-27B")).toEqual([])
   })
 })
 

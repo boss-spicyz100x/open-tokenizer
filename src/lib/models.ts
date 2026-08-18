@@ -33,29 +33,9 @@ export const MODELS: ModelSpec[] = [
     tokenizer: "google/gemma-4-26B-A4B-it",
   },
   {
-    id: "scb10x/typhoon2.1-gemma3-12b",
-    download: "32 MB",
-    note: "Thai-tuned Gemma 3 — useful as a Thai baseline",
-  },
-  {
     id: "Qwen/Qwen3.8-27B",
     download: "12 MB",
     note: "248k byte-level BPE vocab",
-  },
-  {
-    id: "Qwen/Qwen3-8B",
-    download: "11 MB",
-    note: "151k byte-level BPE vocab",
-  },
-  {
-    id: "deepseek-ai/DeepSeek-V3.2",
-    download: "7 MB",
-    note: "129k byte-level BPE vocab",
-  },
-  {
-    id: "openai-community/gpt2",
-    download: "1 MB",
-    note: "50k vocab — loads instantly, poor on non-Latin scripts",
   },
 ]
 

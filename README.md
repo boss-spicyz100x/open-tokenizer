@@ -59,11 +59,9 @@ is why they are absent.
 | --- | --- |
 | `google/gemma-4-26B-A4B-it` | 262,144 |
 | `google/gemma-4-31B-it` | 262,144 (identical tokenizer) |
-| `scb10x/typhoon2.1-gemma3-12b` | Thai-tuned Gemma 3 |
 | `Qwen/Qwen3.8-27B` | 248,044 |
-| `Qwen/Qwen3-8B` | 151,643 |
-| `deepseek-ai/DeepSeek-V3.2` | 128,000 |
-| `openai-community/gpt2` | 50,257 |
+
+Anything else is a search away — the list is a starting point, not a limit.
 
 The list in `models.ts` is a starting point, not the limit. **Add** searches the
 Hugging Face Hub live and accepts any public repo id, and added models persist in
