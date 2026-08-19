@@ -35,10 +35,16 @@ import { cn } from "@/lib/utils"
 const STOP_KEY = "count-stop-token"
 
 /**
- * Input and output are bounded by the same height so the two columns match,
- * and so neither can grow the page enough to scroll the token count off screen.
+ * Input and output are the same fixed height, so the frame never moves: content
+ * scrolls inside a stable box instead of the box resizing as you type. Fixed
+ * rather than max- for that reason, and bounded so neither can grow the page
+ * enough to scroll the token count off screen.
  */
-const PANEL_MAX_H = "max-h-[50vh]"
+const PANEL_H = "h-[50vh]"
+
+// Applied to a plain div inside TabsContent, not to TabsContent itself: that
+// carries `flex-1`, and flex-grow overrides `height` (max-height would clamp,
+// but then the panel only fills once the content is long enough).
 
 const SAMPLES: { label: string; text: string }[] = [
   {
@@ -194,10 +200,7 @@ export default function App() {
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Paste or type text to tokenize…"
                 spellCheck={false}
-                className={cn(
-                  PANEL_MAX_H,
-                  "h-[50vh] resize-y font-mono text-[13px] leading-relaxed",
-                )}
+                className={cn(PANEL_H, "resize-y font-mono text-[13px] leading-relaxed")}
               />
               <div className="flex flex-wrap items-center gap-2">
                 {SAMPLES.map((s) => (
@@ -269,11 +272,15 @@ export default function App() {
                       Copy IDs
                     </Button>
                   </div>
-                  <TabsContent value="text" className={cn(PANEL_MAX_H, "overflow-y-auto")}>
-                    <TokenStream pieces={result.pieces} />
+                  <TabsContent value="text">
+                    <div className={cn(PANEL_H, "overflow-y-auto")}>
+                      <TokenStream pieces={result.pieces} />
+                    </div>
                   </TabsContent>
-                  <TabsContent value="ids" className={cn(PANEL_MAX_H, "overflow-y-auto")}>
-                    <TokenIds pieces={result.pieces} />
+                  <TabsContent value="ids">
+                    <div className={cn(PANEL_H, "overflow-y-auto")}>
+                      <TokenIds pieces={result.pieces} />
+                    </div>
                   </TabsContent>
                 </Tabs>
               )}
