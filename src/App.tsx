@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { ModelStorage } from "@/components/model-storage"
 import { StatsBar } from "@/components/stats-bar"
+import { EMPTY_STATS } from "@/lib/tokens"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { TokenIds, TokenStream } from "@/components/token-stream"
 import { useTokenizer } from "@/hooks/use-tokenizer"
@@ -126,14 +127,27 @@ export default function App() {
 
   const spec = allModels.find((m) => m.id === modelId)
 
+  // Every state renders inside the panel, so the card is the same size whether a
+  // tokenizer is loaded, loading, or missing.
   const panelBody = (view: "text" | "ids") => {
-    if (!result) return <p className="text-sm text-muted-foreground">Tokenizing…</p>
-    if (result.pieces.length === 0)
-      return <p className="text-sm text-muted-foreground">Nothing to tokenize yet.</p>
+    const message =
+      load.status === "idle"
+        ? "Download this tokenizer to see how it splits your text."
+        : load.status === "error"
+          ? "No tokenizer loaded."
+          : load.status === "loading"
+            ? "Loading tokenizer…"
+            : !result
+              ? "Tokenizing…"
+              : result.pieces.length === 0
+                ? "Nothing to tokenize yet."
+                : null
+
+    if (message) return <p className="text-sm text-muted-foreground">{message}</p>
     return view === "text" ? (
-      <TokenStream pieces={result.pieces} />
+      <TokenStream pieces={result!.pieces} />
     ) : (
-      <TokenIds pieces={result.pieces} />
+      <TokenIds pieces={result!.pieces} />
     )
   }
 
@@ -196,7 +210,9 @@ export default function App() {
           onRemoveAll={removeAll}
         />
 
-        {result && <StatsBar stats={result.stats} stale={encoding} />}
+        {/* Always rendered: appearing only once there was a result pushed the
+            whole page down the moment a tokenizer finished loading. */}
+        <StatsBar stats={result?.stats ?? EMPTY_STATS} stale={encoding} />
 
         {/* Stretch is safe now the textarea is a fixed height: it was `flex-1`
             filling the stretched row that used to grow the page on a paste. */}
@@ -235,30 +251,25 @@ export default function App() {
           <Card className="flex flex-col">
             <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
               <CardTitle className="text-sm font-medium">Tokens</CardTitle>
-              {load.status === "ready" && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary" className="font-mono text-[11px]">
-                    {load.vocabSize.toLocaleString()} vocab
-                  </Badge>
-                  {load.tokenizerClass && (
-                    <Badge variant="outline" className="font-mono text-[11px]">
-                      {load.tokenizerClass}
+              {/* Height reserved so the header does not grow when the badges
+                  appear on load. */}
+              <div className="flex h-6 flex-wrap items-center gap-2">
+                {load.status === "ready" && (
+                  <>
+                    <Badge variant="secondary" className="font-mono text-[11px]">
+                      {load.vocabSize.toLocaleString()} vocab
                     </Badge>
-                  )}
-                </div>
-              )}
+                    {load.tokenizerClass && (
+                      <Badge variant="outline" className="font-mono text-[11px]">
+                        {load.tokenizerClass}
+                      </Badge>
+                    )}
+                  </>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="flex-1">
-              {load.status !== "ready" ? (
-                <p className="text-sm text-muted-foreground">
-                  {load.status === "idle"
-                    ? "Download this tokenizer to see how it splits your text."
-                    : load.status === "error"
-                      ? "No tokenizer loaded."
-                      : "Loading tokenizer…"}
-                </p>
-              ) : (
-                <Tabs defaultValue="text">
+              <Tabs defaultValue="text">
                   <div className="mb-3 flex flex-wrap items-center gap-2">
                     <TabsList>
                       <TabsTrigger value="text">Text</TabsTrigger>
@@ -289,8 +300,7 @@ export default function App() {
                       {panelBody("ids")}
                     </div>
                   </TabsContent>
-                </Tabs>
-              )}
+              </Tabs>
             </CardContent>
           </Card>
         </div>

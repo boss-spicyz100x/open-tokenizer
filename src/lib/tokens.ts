@@ -109,3 +109,6 @@ export const TOKEN_COLORS = 10
 export function colorIndex(i: number): number {
   return i % TOKEN_COLORS
 }
+
+/** Zeroed stats, so the bar can render before there is anything to count. */
+export const EMPTY_STATS: Stats = computeStats("", [])
