@@ -31,7 +31,14 @@ import {
 import { loadCustomModels, saveCustomModels } from "@/lib/custom-models"
 import { repairAliases } from "@/lib/share"
 import { AddModel } from "@/components/add-model"
+import { cn } from "@/lib/utils"
 const STOP_KEY = "count-stop-token"
+
+/**
+ * Input and output are bounded by the same height so the two columns match,
+ * and so neither can grow the page enough to scroll the token count off screen.
+ */
+const PANEL_MAX_H = "max-h-[50vh]"
 
 const SAMPLES: { label: string; text: string }[] = [
   {
@@ -174,7 +181,9 @@ export default function App() {
 
         {result && <StatsBar stats={result.stats} stale={encoding} />}
 
-        <div className="grid items-start gap-4 lg:grid-cols-2">
+        {/* Stretch is safe now the textarea is a fixed height: it was `flex-1`
+            filling the stretched row that used to grow the page on a paste. */}
+        <div className="grid gap-4 lg:grid-cols-2">
           <Card className="flex flex-col">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium">Input</CardTitle>
@@ -185,7 +194,10 @@ export default function App() {
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Paste or type text to tokenize…"
                 spellCheck={false}
-                className="h-[320px] max-h-[50vh] resize-y font-mono text-[13px] leading-relaxed"
+                className={cn(
+                  PANEL_MAX_H,
+                  "h-[50vh] resize-y font-mono text-[13px] leading-relaxed",
+                )}
               />
               <div className="flex flex-wrap items-center gap-2">
                 {SAMPLES.map((s) => (
@@ -257,10 +269,10 @@ export default function App() {
                       Copy IDs
                     </Button>
                   </div>
-                  <TabsContent value="text" className="max-h-[50vh] overflow-y-auto">
+                  <TabsContent value="text" className={cn(PANEL_MAX_H, "overflow-y-auto")}>
                     <TokenStream pieces={result.pieces} />
                   </TabsContent>
-                  <TabsContent value="ids" className="max-h-[50vh] overflow-y-auto">
+                  <TabsContent value="ids" className={cn(PANEL_MAX_H, "overflow-y-auto")}>
                     <TokenIds pieces={result.pieces} />
                   </TabsContent>
                 </Tabs>
