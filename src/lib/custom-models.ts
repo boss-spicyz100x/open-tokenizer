@@ -8,7 +8,6 @@ export function specFromRepo(id: string, bytes: number): ModelSpec {
     id,
     download:
       bytes > 0 ? `${(bytes / 1_048_576).toFixed(bytes < 10_485_760 ? 1 : 0)} MB` : "unknown size",
-    note: "Added from the Hugging Face Hub",
     custom: true,
   }
 }

@@ -96,7 +96,6 @@ describe("aliases on added models", () => {
     {
       id: "google/gemma-4-12B-it",
       download: "31 MB",
-      note: "",
       custom: true,
       tokenizer: "google/gemma-4-26B-A4B-it",
     },

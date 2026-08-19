@@ -286,12 +286,10 @@ export default function App() {
           </p>
         )}
 
-        {spec && (
-          <p className="text-xs text-muted-foreground">
-            {spec.note}. Tokenizer files are fetched from the Hugging Face CDN and never leave your
-            browser — the text you paste is not sent anywhere.
-          </p>
-        )}
+        <p className="text-xs text-muted-foreground">
+          Tokenizer files are fetched from the Hugging Face CDN and never leave your browser — the
+          text you paste is not sent anywhere.
+        </p>
       </main>
     </div>
   )

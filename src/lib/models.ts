@@ -2,7 +2,6 @@ export type ModelSpec = {
   id: string
   /** Approximate tokenizer.json download size, shown before the first load. */
   download: string
-  note: string
   /**
    * Repo whose tokenizer files this model uses, when they are not its own.
    * The Gemma 4 family ships byte-identical tokenizer.json and
@@ -24,18 +23,15 @@ export const MODELS: ModelSpec[] = [
   {
     id: "google/gemma-4-26B-A4B-it",
     download: "31 MB",
-    note: "262k vocab, shared across the Gemma 4 family",
   },
   {
     id: "google/gemma-4-31B-it",
     download: "31 MB",
-    note: "262k vocab — byte-identical tokenizer to the 26B-A4B model",
     tokenizer: "google/gemma-4-26B-A4B-it",
   },
   {
     id: "Qwen/Qwen3.8-27B",
     download: "12 MB",
-    note: "248k byte-level BPE vocab",
   },
 ]
 
