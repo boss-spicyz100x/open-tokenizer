@@ -126,6 +126,17 @@ export default function App() {
 
   const spec = allModels.find((m) => m.id === modelId)
 
+  const panelBody = (view: "text" | "ids") => {
+    if (!result) return <p className="text-sm text-muted-foreground">Tokenizing…</p>
+    if (result.pieces.length === 0)
+      return <p className="text-sm text-muted-foreground">Nothing to tokenize yet.</p>
+    return view === "text" ? (
+      <TokenStream pieces={result.pieces} />
+    ) : (
+      <TokenIds pieces={result.pieces} />
+    )
+  }
+
   const copyIds = async () => {
     if (!result) return
     await navigator.clipboard.writeText(JSON.stringify(result.pieces.map((p) => p.id)))
@@ -246,10 +257,6 @@ export default function App() {
                       ? "No tokenizer loaded."
                       : "Loading tokenizer…"}
                 </p>
-              ) : !result ? (
-                <p className="text-sm text-muted-foreground">Tokenizing…</p>
-              ) : result.pieces.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nothing to tokenize yet.</p>
               ) : (
                 <Tabs defaultValue="text">
                   <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -274,12 +281,12 @@ export default function App() {
                   </div>
                   <TabsContent value="text">
                     <div className={cn(PANEL_H, "overflow-y-auto")}>
-                      <TokenStream pieces={result.pieces} />
+                      {panelBody("text")}
                     </div>
                   </TabsContent>
                   <TabsContent value="ids">
                     <div className={cn(PANEL_H, "overflow-y-auto")}>
-                      <TokenIds pieces={result.pieces} />
+                      {panelBody("ids")}
                     </div>
                   </TabsContent>
                 </Tabs>
