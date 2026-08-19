@@ -174,18 +174,18 @@ export default function App() {
 
         {result && <StatsBar stats={result.stats} stale={encoding} />}
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid items-start gap-4 lg:grid-cols-2">
           <Card className="flex flex-col">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium">Input</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-1 flex-col gap-3">
+            <CardContent className="flex flex-col gap-3">
               <Textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Paste or type text to tokenize…"
                 spellCheck={false}
-                className="min-h-[320px] flex-1 resize-y font-mono text-[13px] leading-relaxed"
+                className="h-[320px] max-h-[50vh] resize-y font-mono text-[13px] leading-relaxed"
               />
               <div className="flex flex-wrap items-center gap-2">
                 {SAMPLES.map((s) => (
@@ -257,10 +257,10 @@ export default function App() {
                       Copy IDs
                     </Button>
                   </div>
-                  <TabsContent value="text">
+                  <TabsContent value="text" className="max-h-[50vh] overflow-y-auto">
                     <TokenStream pieces={result.pieces} />
                   </TabsContent>
-                  <TabsContent value="ids">
+                  <TabsContent value="ids" className="max-h-[50vh] overflow-y-auto">
                     <TokenIds pieces={result.pieces} />
                   </TabsContent>
                 </Tabs>
